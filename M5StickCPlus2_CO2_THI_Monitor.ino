@@ -769,8 +769,8 @@ void displayCO2ConcentrationData() {
   M5.Display.setCursor(LARGE_LABEL_X, LARGE_LABEL_Y);
   M5.Display.println("CO2:");
 
-  // CO2数値を**最も大きく**表示 (サイズを7に変更)
-  M5.Display.setTextSize(7);  // 極大サイズ文字
+  // CO2数値を**最も大きく**表示 (サイズを8に変更)
+  M5.Display.setTextSize(8);  // 極大サイズ文字
   M5.Display.setCursor(LARGE_VALUE_X, LARGE_VALUE_Y);
   M5.Display.printf("%d", currentSensorReading.carbonDioxideLevel);
 }
@@ -786,8 +786,8 @@ void displayTHIComfortData() {
   M5.Display.setCursor(LARGE_LABEL_X, LARGE_LABEL_Y);
   M5.Display.println("THI:");
 
-  // THI数値を**最も大きく**表示 (サイズを7に変更)
-  M5.Display.setTextSize(7);  // 極大サイズ文字
+  // THI数値を**最も大きく**表示 (サイズを8に変更)
+  M5.Display.setTextSize(8);  // 極大サイズ文字
   M5.Display.setCursor(LARGE_VALUE_X, LARGE_VALUE_Y);
   M5.Display.printf("%.1f", currentSensorReading.thermalComfortIndex);
 }
