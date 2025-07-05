@@ -7,7 +7,7 @@
  * - NTPサーバから正確な時刻を取得する
  * - MQTTブローカからセンサーデータ（CO2とTHI）を受信する
  * - 受信したデータをM5StickCPlus2の画面に表示する
- * - 5秒毎に表示を更新する
+ * - 3秒ごとにCO2とTHIを交互に表示する
  * * 必要なライブラリ：
  * - M5StickCPlus2：M5Stack製品の制御
  * - WiFi：WiFi接続機能
@@ -34,7 +34,7 @@
  * 構造体：関連するデータを一つのまとまりとして扱うC++の機能
  */
 struct SensorDataPacket {
-  int carbonDioxideLevel;          // CO2濃度（整数値、ppm単位）
+  int carbonDioxideLevel;          // CO2濃度（整数値）
   float thermalComfortIndex;       // THI（温熱指標、小数点第1位まで）
   float ambientTemperature;        // 環境温度（摂氏）
   float relativeHumidity;          // 相対湿度（%）
@@ -460,7 +460,7 @@ void handleIncomingMQTTMessage(char* topicName, byte* messagePayload, unsigned i
   if (parsedSensorData.hasValidData) {
     // 成功：データを更新
     updateCurrentSensorData(parsedSensorData);
-    Serial.printf("✅ センサーデータ更新成功 - CO2: %d ppm, THI: %.1f\n",
+    Serial.printf("✅ センサーデータ更新成功 - CO2: %d, THI: %.1f\n",  // 単位を削除
                   parsedSensorData.carbonDioxideLevel,
                   parsedSensorData.thermalComfortIndex);
     // データが更新されたので、直ちに表示をリフレッシュ
@@ -568,7 +568,7 @@ SensorDataPacket parseJSONSensorData(const String& jsonString) {
   // CO2濃度データの抽出
   if (jsonDocument.containsKey("co2")) {
     extractedData.carbonDioxideLevel = jsonDocument["co2"];
-    Serial.printf("📊 CO2濃度: %d ppm\n", extractedData.carbonDioxideLevel);
+    Serial.printf("📊 CO2濃度: %d\n", extractedData.carbonDioxideLevel);  // 単位を削除
   } else {
     Serial.println("⚠️ 警告: CO2データが見つかりません");
   }
@@ -576,7 +576,7 @@ SensorDataPacket parseJSONSensorData(const String& jsonString) {
   // THI（温熱指標）データの抽出
   if (jsonDocument.containsKey("thi")) {
     extractedData.thermalComfortIndex = jsonDocument["thi"];
-    Serial.printf("🌡️ THI値: %.1f\n", extractedData.thermalComfortIndex);
+    Serial.printf("🌡️ THI値: %.1f\n", extractedData.thermalComfortIndex);  // 単位を削除
   } else {
     Serial.println("⚠️ 警告: THIデータが見つかりません");
   }
@@ -695,9 +695,9 @@ void refreshEntireDisplay() {
 
   // 初期表示、またはデータ受信直後に呼び出された場合は、現在の表示フラグに基づいて表示
   if (currentSensorReading.hasValidData) {
-    if (displayCO2) {
+    if (displayCO2) {  // refreshEntireDisplayの初回呼び出し時はCO2から
       displayCO2ConcentrationData();
-    } else {
+    } else {  // それ以外の場合は現在のdisplayCO2フラグに従う
       displayTHIComfortData();
     }
   } else {
@@ -760,7 +760,7 @@ void displaySensorDataOrErrorMessage() {
 
 /*
  * CO2濃度データを大きく表示
- * 緑色で見やすく表示し、単位（ppm）も併記
+ * 緑色で見やすく表示
  */
 void displayCO2ConcentrationData() {
   // CO2ラベルを表示
@@ -772,7 +772,7 @@ void displayCO2ConcentrationData() {
   // CO2数値を**最も大きく**表示 (サイズを8に変更)
   M5.Display.setTextSize(8);  // 極大サイズ文字
   M5.Display.setCursor(LARGE_VALUE_X, LARGE_VALUE_Y);
-  M5.Display.printf("%d", currentSensorReading.carbonDioxideLevel);
+  M5.Display.printf("%d", currentSensorReading.carbonDioxideLevel);  // 単位を削除
 }
 
 /*
@@ -789,7 +789,7 @@ void displayTHIComfortData() {
   // THI数値を**最も大きく**表示 (サイズを8に変更)
   M5.Display.setTextSize(8);  // 極大サイズ文字
   M5.Display.setCursor(LARGE_VALUE_X, LARGE_VALUE_Y);
-  M5.Display.printf("%.1f", currentSensorReading.thermalComfortIndex);
+  M5.Display.printf("%.1f", currentSensorReading.thermalComfortIndex);  // 単位を削除
 }
 
 /*
