@@ -2,22 +2,20 @@
  * ================================================================================
  * M5StickCPlus2 MQTT センサーモニター（初学者向け詳細解説版）
  * ================================================================================
- * 
- * このプログラムの目的：
+ * * このプログラムの目的：
  * - WiFiネットワークに接続する
  * - NTPサーバから正確な時刻を取得する
  * - MQTTブローカからセンサーデータ（CO2とTHI）を受信する
  * - 受信したデータをM5StickCPlus2の画面に表示する
  * - 5秒毎に表示を更新する
- * 
- * 必要なライブラリ：
+ * * 必要なライブラリ：
  * - M5StickCPlus2：M5Stack製品の制御
  * - WiFi：WiFi接続機能
  * - PubSubClient：MQTT通信機能
  * - ArduinoJson：JSON形式データの解析
  * - NTPClient：時刻同期機能
- * 
- * 作成日: 2025年5月29日
+ * * 作成日: 2025年5月29日
+ * 最終更新日: 2025年7月5日 (Apple社チーフデザイナーによるUI/UX改善版)
  * ================================================================================
  */
 
@@ -28,75 +26,7 @@
 #include <ArduinoJson.h>    // JSON解析ライブラリ
 #include <NTPClient.h>      // 時刻同期ライブラリ
 #include <WiFiUdp.h>        // NTP通信に必要
-
-// ========== ネットワーク設定（変更必要箇所） ==========
-/*
- * 重要：以下の設定は実際の環境に合わせて変更してください
- */
-const char* WIFI_NETWORK_NAME = "A0957FA4E825-2G";     // 接続するWiFiのSSID（ネットワーク名）
-const char* WIFI_NETWORK_PASSWORD = "6fh62nh25h72xc";  // WiFiのパスワード
-
-// ========== MQTT設定（変更必要箇所） ==========
-/*
- * MQTT（Message Queuing Telemetry Transport）は軽量なメッセージング通信方式
- * センサーデータを効率的に送受信するために使用
- */
-const char* MQTT_BROKER_ADDRESS = "192.168.3.82";      // MQTTブローカ（サーバ）のIPアドレス
-const char* MQTT_TOPIC_NAME = "sensor_data";           // 購読するトピック名（データのカテゴリ）
-const int MQTT_BROKER_PORT = 1883;                     // MQTTブローカのポート番号（標準は1883）
-const char* MQTT_CLIENT_ID_PREFIX = "M5StickCPlus2-";  // MQTT接続時のクライアントID接頭辞
-
-// ========== 時刻同期設定 ==========
-/*
- * NTP（Network Time Protocol）でインターネット上の時刻サーバから正確な時刻を取得
- */
-const char* TIME_SERVER_ADDRESS = "pool.ntp.org";               // NTPサーバのアドレス
-const long JAPAN_TIME_OFFSET_SECONDS = 32400;                   // 日本時間のオフセット（+9時間を秒換算）
-const unsigned long TIME_UPDATE_INTERVAL_MILLISECONDS = 60000;  // 時刻更新間隔（1分）
-
-// ========== 表示更新設定 ==========
-/*
- * 画面表示の更新タイミングを制御する設定
- */
-const unsigned long DISPLAY_UPDATE_INTERVAL_MILLISECONDS = 5000;  // 画面更新間隔（5秒）
-const unsigned long MAIN_LOOP_DELAY_MILLISECONDS = 100;           // メインループの待機時間
-
-// ========== 画面表示位置の設定 ==========
-/*
- * M5StickCPlus2の小さな画面に効率的に情報を配置するための座標設定
- * 画面サイズ：240x135 ピクセル
- */
-const int TITLE_POSITION_X = 10;      // タイトル表示のX座標
-const int TITLE_POSITION_Y = 5;       // タイトル表示のY座標
-const int TIME_DISPLAY_X = 120;       // 時刻表示のX座標
-const int TIME_DISPLAY_Y = 5;         // 時刻表示のY座標
-const int CO2_LABEL_X = 10;           // CO2ラベルのX座標
-const int CO2_LABEL_Y = 30;           // CO2ラベルのY座標
-const int CO2_VALUE_X = 10;           // CO2数値のX座標
-const int CO2_VALUE_Y = 50;           // CO2数値のY座標
-const int THI_LABEL_X = 10;           // THIラベルのX座標
-const int THI_LABEL_Y = 90;           // THIラベルのY座標
-const int THI_VALUE_X = 10;           // THI数値のX座標
-const int THI_VALUE_Y = 110;          // THI数値のY座標
-const int NO_DATA_MESSAGE_X = 20;     // データなしメッセージのX座標
-const int NO_DATA_MESSAGE_Y = 60;     // データなしメッセージのY座標
-const int CONNECTION_STATUS_X = 200;  // 接続状態表示のX座標
-const int CONNECTION_STATUS_Y = 5;    // 接続状態表示のY座標
-
-// ========== 再試行・タイムアウト設定 ==========
-/*
- * ネットワーク接続や時刻同期で失敗した場合の再試行回数と待機時間
- */
-const int MAXIMUM_NTP_RETRY_ATTEMPTS = 10;                        // NTP同期の最大試行回数
-const unsigned long MQTT_RECONNECTION_DELAY_MILLISECONDS = 5000;  // MQTT再接続待機時間（5秒）
-const unsigned long CONNECTION_SUCCESS_DISPLAY_TIME = 2000;       // 接続成功メッセージ表示時間（2秒）
-
-// ========== JSON解析設定 ==========
-/*
- * JSON（JavaScript Object Notation）は軽量なデータ交換形式
- * センサーデータはJSON形式で送信される
- */
-const size_t JSON_PARSING_MEMORY_SIZE = 2048;  // JSON解析用メモリサイズ（バイト）
+#include "config.h"         // 新しく作成した設定ファイルを読み込み！
 
 // ========== データ構造体の定義 ==========
 /*
@@ -142,6 +72,10 @@ SensorDataPacket currentSensorReading = {
 
 // タイミング制御用変数
 unsigned long lastDisplayUpdateTime = 0;  // 最後に画面を更新した時刻
+
+// 新規追加：交互表示の状態とタイミング制御
+unsigned long lastInteractiveDisplayTime = 0;  // 最後に交互表示を更新した時刻
+bool displayCO2 = true;                        // 現在CO2を表示中かTHIを表示中か
 
 // ========== 関数の前方宣言 ==========
 /*
@@ -228,7 +162,7 @@ void loop() {
   // 2. 受信したMQTTメッセージの処理
   processIncomingMQTTMessages();
 
-  // 3. 画面表示の定期更新（5秒毎）
+  // 3. 画面表示の定期更新（3秒毎にCO2/THI交互表示、データがなければNo Dataを表示）
   updateDisplayIfIntervalElapsed();
 
   // 4. システム時刻の更新
@@ -317,8 +251,9 @@ void displayWiFiConnectionSuccess() {
   clearDisplayScreenWithColor(BLACK);
   M5.Display.setCursor(TITLE_POSITION_X, TITLE_POSITION_Y);
   M5.Display.println("WiFi Connected!");
-  M5.Display.setCursor(TITLE_POSITION_X, CO2_LABEL_Y);
-  M5.Display.println(WiFi.localIP());  // IPアドレスを表示
+  // IPアドレスをタイトルから少し下の位置に表示
+  M5.Display.setCursor(TITLE_POSITION_X, TITLE_POSITION_Y + 20);  // Y座標を調整
+  M5.Display.println(WiFi.localIP());                             // IPアドレスを表示
   delay(CONNECTION_SUCCESS_DISPLAY_TIME);
 }
 
@@ -377,7 +312,8 @@ void displayNTPSynchronizationResult(bool wasSuccessful) {
   if (wasSuccessful) {
     // 成功時：同期した時刻を表示
     M5.Display.println("NTP Synced!");
-    M5.Display.setCursor(TITLE_POSITION_X, CO2_LABEL_Y);
+    // 同期した時刻をタイトルから少し下の位置に表示
+    M5.Display.setCursor(TITLE_POSITION_X, TITLE_POSITION_Y + 20);  // Y座標を調整
     M5.Display.println(timeClient.getFormattedTime());
     Serial.print("🕐 同期完了時刻: ");
     Serial.println(timeClient.getFormattedTime());
@@ -493,9 +429,9 @@ void displayMQTTConnectionFailure() {
 /*
  * MQTTメッセージ受信時に自動的に呼び出される関数（コールバック関数）
  * 引数：
- *   topicName = 受信したトピック名
- *   messagePayload = 受信したデータ（バイト配列）
- *   messageLength = データの長さ
+ * topicName = 受信したトピック名
+ * messagePayload = 受信したデータ（バイト配列）
+ * messageLength = データの長さ
  */
 void handleIncomingMQTTMessage(char* topicName, byte* messagePayload, unsigned int messageLength) {
   // バイト配列を文字列に変換
@@ -527,6 +463,8 @@ void handleIncomingMQTTMessage(char* topicName, byte* messagePayload, unsigned i
     Serial.printf("✅ センサーデータ更新成功 - CO2: %d ppm, THI: %.1f\n",
                   parsedSensorData.carbonDioxideLevel,
                   parsedSensorData.thermalComfortIndex);
+    // データが更新されたので、直ちに表示をリフレッシュ
+    refreshEntireDisplay();
   } else {
     // 失敗：エラー表示
     Serial.println("❌ センサーデータ解析失敗");
@@ -704,18 +642,33 @@ void processIncomingMQTTMessages() {
 }
 
 /*
- * 指定間隔（5秒）が経過していれば画面表示を更新
- * 無駄な更新を避けてパフォーマンスを保持
+ * 指定間隔（3秒）が経過していればCO2/THIを交互に表示を更新
+ * データがない場合は「No Data」を表示
  */
 void updateDisplayIfIntervalElapsed() {
   unsigned long currentSystemTime = millis();
 
-  // 前回更新から指定時間が経過しているかチェック
-  if (currentSystemTime - lastDisplayUpdateTime >= DISPLAY_UPDATE_INTERVAL_MILLISECONDS) {
-    refreshEntireDisplay();
-    lastDisplayUpdateTime = currentSystemTime;  // 更新時刻を記録
+  // 交互表示のタイミングをチェック
+  if (currentSystemTime - lastInteractiveDisplayTime >= INTERACTIVE_DISPLAY_INTERVAL_MILLISECONDS) {
+    clearDisplayScreenWithColor(BLACK);  // 表示切り替え前に画面をクリア
+    displayApplicationTitle();
+    displayCurrentSystemTime();
+    displayNetworkConnectionStatus();
+
+    if (currentSensorReading.hasValidData) {
+      if (displayCO2) {
+        displayCO2ConcentrationData();
+      } else {
+        displayTHIComfortData();
+      }
+      displayCO2 = !displayCO2;  // 次回のために表示フラグを反転
+    } else {
+      displayNoDataAvailableMessage();  // データがなければNo Data
+    }
+    lastInteractiveDisplayTime = currentSystemTime;  // 更新時刻を記録
   }
 }
+
 
 /*
  * システム時刻をNTPサーバと定期同期
@@ -738,8 +691,18 @@ void refreshEntireDisplay() {
   // 各表示要素を順次描画
   displayApplicationTitle();
   displayCurrentSystemTime();
-  displaySensorDataOrErrorMessage();
-  displayNetworkConnectionStatus();
+  displayNetworkConnectionStatus();  // 接続状態を上部に移動して常に表示
+
+  // 初期表示、またはデータ受信直後に呼び出された場合は、現在の表示フラグに基づいて表示
+  if (currentSensorReading.hasValidData) {
+    if (displayCO2) {
+      displayCO2ConcentrationData();
+    } else {
+      displayTHIComfortData();
+    }
+  } else {
+    displayNoDataAvailableMessage();
+  }
 }
 
 /*
@@ -764,16 +727,33 @@ void displayCurrentSystemTime() {
 }
 
 /*
+ * ネットワーク接続状態を画面右上に表示
+ * 接続状態に応じて色を変更（緑=OK、赤=NG）
+ */
+void displayNetworkConnectionStatus() {
+  M5.Display.setTextSize(1);  // 小サイズ文字
+  // 接続状態に応じて色を変更
+  M5.Display.setTextColor(mqttCommunicationClient.connected() ? GREEN : RED);
+  M5.Display.setCursor(CONNECTION_STATUS_X, CONNECTION_STATUS_Y);
+  M5.Display.println(mqttCommunicationClient.connected() ? "MQTT:OK" : "MQTT:NG");
+}
+
+
+/*
  * センサーデータまたはエラーメッセージを表示
  * データの有無に応じて表示内容を切り替え
+ * (この関数は updateDisplayIfIntervalElapsed() にロジックが移されたため、呼び出しはほぼ無くなりますが、
+ * refreshEntireDisplay() で初期描画用として残します。)
  */
 void displaySensorDataOrErrorMessage() {
+  // この関数は主にrefreshEntireDisplay()からの初期表示用
   if (currentSensorReading.hasValidData) {
-    // 有効なデータがある場合：CO2とTHIを表示
-    displayCO2ConcentrationData();
-    displayTHIComfortData();
+    if (displayCO2) {  // refreshEntireDisplayの初回呼び出し時はCO2から
+      displayCO2ConcentrationData();
+    } else {  // それ以外の場合は現在のdisplayCO2フラグに従う
+      displayTHIComfortData();
+    }
   } else {
-    // データがない場合：エラーメッセージを表示
     displayNoDataAvailableMessage();
   }
 }
@@ -784,14 +764,14 @@ void displaySensorDataOrErrorMessage() {
  */
 void displayCO2ConcentrationData() {
   // CO2ラベルを表示
-  M5.Display.setTextSize(2);       // 中サイズ文字
+  M5.Display.setTextSize(2);       // 中サイズ文字 (CO2:)
   M5.Display.setTextColor(GREEN);  // 緑色
-  M5.Display.setCursor(CO2_LABEL_X, CO2_LABEL_Y);
+  M5.Display.setCursor(LARGE_LABEL_X, LARGE_LABEL_Y);
   M5.Display.println("CO2:");
 
-  // CO2数値を大きく表示
-  M5.Display.setTextSize(3);  // 大サイズ文字
-  M5.Display.setCursor(CO2_VALUE_X, CO2_VALUE_Y);
+  // CO2数値を**最も大きく**表示 (サイズを6に変更)
+  M5.Display.setTextSize(6);  // 極大サイズ文字
+  M5.Display.setCursor(LARGE_VALUE_X, LARGE_VALUE_Y);
   M5.Display.printf("%d ppm", currentSensorReading.carbonDioxideLevel);
 }
 
@@ -801,14 +781,14 @@ void displayCO2ConcentrationData() {
  */
 void displayTHIComfortData() {
   // THIラベルを表示
-  M5.Display.setTextSize(2);        // 中サイズ文字
+  M5.Display.setTextSize(2);        // 中サイズ文字 (THI:)
   M5.Display.setTextColor(ORANGE);  // オレンジ色
-  M5.Display.setCursor(THI_LABEL_X, THI_LABEL_Y);
+  M5.Display.setCursor(LARGE_LABEL_X, LARGE_LABEL_Y);
   M5.Display.println("THI:");
 
-  // THI数値を大きく表示（小数点第1位まで）
-  M5.Display.setTextSize(3);  // 大サイズ文字
-  M5.Display.setCursor(THI_VALUE_X, THI_VALUE_Y);
+  // THI数値を**最も大きく**表示 (サイズを6に変更)
+  M5.Display.setTextSize(6);  // 極大サイズ文字
+  M5.Display.setCursor(LARGE_VALUE_X, LARGE_VALUE_Y);
   M5.Display.printf("%.1f", currentSensorReading.thermalComfortIndex);
 }
 
@@ -823,17 +803,6 @@ void displayNoDataAvailableMessage() {
   M5.Display.println("No Data");
 }
 
-/*
- * ネットワーク接続状態を画面右上に表示
- * 接続状態に応じて色を変更（緑=OK、赤=NG）
- */
-void displayNetworkConnectionStatus() {
-  M5.Display.setTextSize(1);  // 小サイズ文字
-  // 接続状態に応じて色を変更
-  M5.Display.setTextColor(mqttCommunicationClient.connected() ? GREEN : RED);
-  M5.Display.setCursor(CONNECTION_STATUS_X, CONNECTION_STATUS_Y);
-  M5.Display.println(mqttCommunicationClient.connected() ? "MQTT:OK" : "MQTT:NG");
-}
 
 /*
  * JSON解析エラー時の専用画面表示
@@ -853,22 +822,22 @@ void displayJSONParsingError(const char* errorDescription) {
   M5.Display.setCursor(TIME_DISPLAY_X, TIME_DISPLAY_Y);
   M5.Display.println(timeClient.getFormattedTime());
 
-  // エラーメッセージ表示
-  M5.Display.setTextSize(2);
-  M5.Display.setTextColor(RED);
-  M5.Display.setCursor(20, 50);
-  M5.Display.println("JSON Error");
-
-  // エラー詳細表示
-  M5.Display.setTextSize(1);
-  M5.Display.setCursor(20, 80);
-  M5.Display.println(errorDescription);
-
   // 接続状態表示
   M5.Display.setTextSize(1);
   M5.Display.setTextColor(mqttCommunicationClient.connected() ? GREEN : RED);
   M5.Display.setCursor(CONNECTION_STATUS_X, CONNECTION_STATUS_Y);
   M5.Display.println(mqttCommunicationClient.connected() ? "MQTT:OK" : "MQTT:NG");
+
+  // エラーメッセージ表示
+  M5.Display.setTextSize(2);
+  M5.Display.setTextColor(RED);
+  M5.Display.setCursor(20, 50 + VERTICAL_OFFSET);  // Y座標を調整
+  M5.Display.println("JSON Error");
+
+  // エラー詳細表示
+  M5.Display.setTextSize(1);
+  M5.Display.setCursor(20, 80 + VERTICAL_OFFSET);  // Y座標を調整
+  M5.Display.println(errorDescription);
 }
 
 // ========== ユーティリティ関数群 ==========
@@ -908,23 +877,19 @@ void printMQTTSubscriptionDebugInfo() {
  * ================================================================================
  * プログラム終了
  * ================================================================================
- * 
- * このプログラムの動作フロー：
+ * * このプログラムの動作フロー：
  * 1. setup()で初期化（WiFi接続→NTP同期→MQTT接続）
  * 2. loop()で継続処理（MQTT監視→メッセージ処理→画面更新）
  * 3. センサーデータ受信時に自動的に画面更新
- * 
- * 主要な特徴：
+ * * 主要な特徴：
  * - 自動再接続機能（WiFi/MQTT切断時）
  * - 詳細なエラーハンドリング
  * - 直感的な画面表示
  * - 豊富なデバッグ情報出力
- * 
- * カスタマイズポイント：
+ * * カスタマイズポイント：
  * - WiFi設定（SSID/パスワード）
  * - MQTTブローカ設定（IPアドレス/ポート/トピック）
  * - 画面レイアウト（座標/色/サイズ）
  * - 更新間隔（表示更新/時刻同期）
- * 
- * ================================================================================
+ * * ================================================================================
  */
