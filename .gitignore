@@ -1,1 +1,12 @@
+# Arduino/PlatformIO build files
+.pio/
+.vscode/
+build/
+.build/
+
+# User-specific configuration file
+# Contains sensitive information like WiFi passwords.
 config.h
+
+# Mac junk
+.DS_Store

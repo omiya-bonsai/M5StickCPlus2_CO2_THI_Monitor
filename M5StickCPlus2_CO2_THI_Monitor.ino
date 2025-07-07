@@ -15,7 +15,7 @@
  * - ArduinoJson：JSON形式データの解析
  * - NTPClient：時刻同期機能
  * * 作成日: 2025年5月29日
- * 最終更新日: 2025年7月7日 (Apple社チーフデザイナーによるUI/UX改善版: 数値右揃え)
+ * 最終更新日: 2025年7月7日 (Apple社チーフデザイナーによるUI/UX改善版: 数値右揃え、位置調整)
  * ================================================================================
  */
 
@@ -46,7 +46,7 @@ struct SensorDataPacket {
 // ========== グローバル変数（プログラム全体で使用する変数） ==========
 /*
  * グローバル変数：プログラムのどこからでもアクセスできる変数
- * 通常は最小限に抑えるが、組み込みシステムでは必要に応じて使用 
+ * 通常は最小限に抑えるが、組み込みシステムでは必要に応じて使用
  */
 
 // ネットワーク通信用のクライアントオブジェクト
@@ -460,11 +460,11 @@ void handleIncomingMQTTMessage(char* topicName, byte* messagePayload, unsigned i
   if (parsedSensorData.hasValidData) {
     // 成功：データを更新
     updateCurrentSensorData(parsedSensorData);
-    Serial.printf("✅ センサーデータ更新成功 - CO2: %d, THI: %.1f\n", // 単位を削除
+    Serial.printf("✅ センサーデータ更新成功 - CO2: %d, THI: %.1f\n",  // 単位を削除
                   parsedSensorData.carbonDioxideLevel,
                   parsedSensorData.thermalComfortIndex);
     // データが更新されたので、直ちに表示をリフレッシュ
-    refreshEntireDisplay(); 
+    refreshEntireDisplay();
   } else {
     // 失敗：エラー表示
     Serial.println("❌ センサーデータ解析失敗");
@@ -568,7 +568,7 @@ SensorDataPacket parseJSONSensorData(const String& jsonString) {
   // CO2濃度データの抽出
   if (jsonDocument.containsKey("co2")) {
     extractedData.carbonDioxideLevel = jsonDocument["co2"];
-    Serial.printf("📊 CO2濃度: %d\n", extractedData.carbonDioxideLevel); // 単位を削除
+    Serial.printf("📊 CO2濃度: %d\n", extractedData.carbonDioxideLevel);  // 単位を削除
   } else {
     Serial.println("⚠️ 警告: CO2データが見つかりません");
   }
@@ -576,7 +576,7 @@ SensorDataPacket parseJSONSensorData(const String& jsonString) {
   // THI（温熱指標）データの抽出
   if (jsonDocument.containsKey("thi")) {
     extractedData.thermalComfortIndex = jsonDocument["thi"];
-    Serial.printf("🌡️ THI値: %.1f\n", extractedData.thermalComfortIndex); // 単位を削除
+    Serial.printf("🌡️ THI値: %.1f\n", extractedData.thermalComfortIndex);  // 単位を削除
   } else {
     Serial.println("⚠️ 警告: THIデータが見つかりません");
   }
@@ -764,25 +764,27 @@ void displaySensorDataOrErrorMessage() {
  */
 void displayCO2ConcentrationData() {
   // CO2ラベルを表示
-  M5.Display.setTextSize(2);       // 中サイズ文字 (CO2:)
-  M5.Display.setTextColor(GREEN);  // 緑色
+  M5.Display.setTextSize(2);
+  M5.Display.setTextColor(GREEN);
   M5.Display.setCursor(LARGE_LABEL_X, LARGE_LABEL_Y);
   M5.Display.println("CO2:");
 
-  // CO2数値を**最も大きく**表示 (サイズを8に変更)
-  M5.Display.setTextSize(8);  // 極大サイズ文字
-  M5.Display.setTextColor(GREEN); // 数値の色
+  // CO2数値を**最も大きく**表示
+  M5.Display.setTextSize(8);
+  M5.Display.setTextColor(GREEN);
 
-  // 【変更点】数値を右揃えにする
-  // TR_DATUM (Top Right Datum): 指定されたX,Y座標をテキストの右上隅として描画
-  // X座標は画面の右端から RIGHT_MARGIN だけ内側に設定
-  const int RIGHT_MARGIN = 5; // 右端からの余白
-  M5.Display.setTextDatum(TR_DATUM); 
-  M5.Display.setCursor(M5.Display.width() - RIGHT_MARGIN, LARGE_VALUE_Y);
-  M5.Display.printf("%d", currentSensorReading.carbonDioxideLevel); // 単位を削除
-  
-  // テキスト描画後、次の描画に影響しないようにデフォルトの左上揃えに戻す
-  M5.Display.setTextDatum(TL_DATUM); 
+  // 【修正】数値を右揃えにする (drawStringを使用)
+  // 基準点を右上に設定
+  M5.Display.setTextDatum(TR_DATUM);
+
+  // 表示する数値をStringに変換
+  String co2Value = String(currentSensorReading.carbonDioxideLevel);
+
+  // 画面の右端を基準に文字列を描画
+  M5.Display.drawString(co2Value, M5.Display.width() - DISPLAY_RIGHT_MARGIN, LARGE_VALUE_Y);
+
+  // 基準点をデフォルト（左上）に戻す
+  M5.Display.setTextDatum(TL_DATUM);
 }
 
 /*
@@ -791,23 +793,27 @@ void displayCO2ConcentrationData() {
  */
 void displayTHIComfortData() {
   // THIラベルを表示
-  M5.Display.setTextSize(2);        // 中サイズ文字 (THI:)
-  M5.Display.setTextColor(ORANGE);  // オレンジ色
+  M5.Display.setTextSize(2);
+  M5.Display.setTextColor(ORANGE);
   M5.Display.setCursor(LARGE_LABEL_X, LARGE_LABEL_Y);
   M5.Display.println("THI:");
 
-  // THI数値を**最も大きく**表示 (サイズを8に変更)
-  M5.Display.setTextSize(8);  // 極大サイズ文字
-  M5.Display.setTextColor(ORANGE); // 数値の色
+  // THI数値を**最も大きく**表示
+  M5.Display.setTextSize(8);
+  M5.Display.setTextColor(ORANGE);
 
-  // 【変更点】数値を右揃えにする
-  const int RIGHT_MARGIN = 5; // 右端からの余白
+  // 【修正】数値を右揃えにする (drawStringを使用)
+  // 基準点を右上に設定
   M5.Display.setTextDatum(TR_DATUM);
-  M5.Display.setCursor(M5.Display.width() - RIGHT_MARGIN, LARGE_VALUE_Y);
-  M5.Display.printf("%.1f", currentSensorReading.thermalComfortIndex); // 単位を削除
 
-  // テキスト描画後、次の描画に影響しないようにデフォルトの左上揃えに戻す
-  M5.Display.setTextDatum(TL_DATUM); 
+  // 表示する数値をStringに変換 (小数点第1位まで)
+  String thiValue = String(currentSensorReading.thermalComfortIndex, 1);
+
+  // 画面の右端を基準に文字列を描画
+  M5.Display.drawString(thiValue, M5.Display.width() - DISPLAY_RIGHT_MARGIN, LARGE_VALUE_Y);
+
+  // 基準点をデフォルト（左上）に戻す
+  M5.Display.setTextDatum(TL_DATUM);
 }
 
 /*
